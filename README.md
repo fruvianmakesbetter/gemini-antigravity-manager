@@ -42,7 +42,7 @@ NOTICE:(Be sure to click "Clean Up Proxy Environment Variables" after using the 
 - 关闭已有的 Antigravity / `language_server` 旧实例。
 - 通过 `start_ag.vbs` 向所有进程注入系统级代理环境变量，确保antigravity程序正常运行。
 - 以 `wscript` 完全脱离控制台的方式拉起，因此 **关闭脚本窗口 / 工具箱后 Antigravity 不会被关闭**。
-- 避免了此前 Electron 加载本地回环端口 `https://127.0.0.1:5283/` 时出现的 `ERR_TIMED_OUT` 黑屏问题。
+- 避免了 Electron 加载本地回环端口 `https://127.0.0.1:5283/` 时出现的 `ERR_TIMED_OUT` 黑屏问题。
 
 ### 3. 清理代理环境变量
 
