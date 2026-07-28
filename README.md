@@ -1,0 +1,2 @@
+一定要在使用完antigravity脚本后点击清理代理环境变量!否则在关闭代理后其他应用无法使用！
+（Be sure to click "Clean Up Proxy Environment Variables" after using the Antigravity script! Otherwise, other apps will not work after closing the proxy.）
