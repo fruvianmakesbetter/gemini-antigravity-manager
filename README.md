@@ -25,7 +25,7 @@ NOTICE:(Be sure to click "Clean Up Proxy Environment Variables" after using the 
 ### 1. Gemini 通用一键配置与登录启动（6 步流程）
 
 双击运行后自动执行：
-
+| **检测主程序** | 自动定位 `cli-proxy-api.exe`（用户目录或脚本同级），未找到时弹出目录引导用户放置 |
 1. **Google 连通性检测** — 通过 `127.0.0.1:7890` 代理探测 `https://www.google.com/generate_204`，失败则弹出原生 VBScript 对话框提示开启代理。
 2. **补全配置文件** — 自动生成 `~/.cli-proxy-api/config.yaml` 与隐形后台启动器 `start_bridge.vbs`。
 3. **账号登录状态检查** — 检测 `~/.cli-proxy-api/*.json` 凭证；缺失时自动唤起浏览器完成 Google / Antigravity 的 OAuth 授权。
