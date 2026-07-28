@@ -1,5 +1,6 @@
 NOTICE:一定要在使用完antigravity脚本后点击清理代理环境变量!否则在关闭代理后其他应用无法使用！
 NOTICE:(Be sure to click "Clean Up Proxy Environment Variables" after using the Antigravity script! Otherwise, other apps will not work after closing the proxy.）
+！！P.S.若遇到“找不到start_bridge.vbs”的报错，可能是系统对于vbs脚本的注入进行拦截，可在仓库中自行下载粘贴到对应路径，vbs文件中的将username字段替换为当前设备用户名即可。！！！
 # Gemini & Antigravity Manager
 
 一键完成 **Gemini 桥接服务**的登录、模型同步、后台启动，以及 **Antigravity** 的独立代理启动与系统代理清理。
