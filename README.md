@@ -1,138 +1,126 @@
-NOTICE:一定要在使用完antigravity脚本后点击清理代理环境变量!否则在关闭代理后其他应用无法使用！
-NOTICE:(Be sure to click "Clean Up Proxy Environment Variables" after using the Antigravity script! Otherwise, other apps will not work after closing the proxy.）
-！！P.S.若遇到“找不到start_bridge.vbs”的报错，可能是系统对于vbs脚本的注入进行拦截，可在仓库中自行下载粘贴到对应路径，vbs文件中的将username字段替换为当前设备用户名即可。！！！
-# Gemini & Antigravity Manager
+# Gemini / Antigravity 配置工具箱
 
-一键完成 **Gemini 桥接服务**的登录、模型同步、后台启动，以及 **Antigravity** 的独立代理启动与系统代理清理。
-
-> 本项目面向 Windows 用户，依赖本机已安装的 [WorkBuddy](https://www.codebuddy.cn/)、`cli-proxy-api` 桥接组件与第三方代理/VPN 软件（默认 FlClash，端口 `7890`）。
+将Gemini模型桥接进 WorkBuddy 的一键配置与启动工具集。
+配套的图形界面 `GeminiAntigravitytools.exe` 是把下面这些脚本封装成按钮的 GUI 版本。
 
 ---
 
-## ✨ 功能概览
+## 一、它能做什么
 
-打包后的单文件程序 `GeminiAntigravitytools.exe` 是一个基于 Python `tkinter` 的 GUI 工具箱，内含 **三个按钮**，分别对应三个独立的批处理脚本：
-
-| 按钮 | 对应脚本 | 作用 |
-|------|----------|------|
-| 🚀 **Gemini 通用一键配置与登录启动** | `Gemini通用一键配置与登录启动.cmd` | 全流程：连通性检测 → OAuth 登录 → 写入 WorkBuddy 模型 → 拉起桥接服务 → API 测试 |
-| 🔑 **Antigravity 启动与配置代理** | `Antigravity启动与配置代理.cmd` | 以独立代理环境拉起 Antigravity 完成 Google OAuth 登录（不影响系统其他软件） |
-| 🧹 **清理代理环境变量** | `清理系统全局代理.cmd` | 彻底清除注册表中残留的 `HTTPS_PROXY/HTTP_PROXY/NO_PROXY` 并广播刷新 |
+- **Gemini 桥接服务**：拉起本地代理桥（`cli-proxy-api`），把 Gemini / Claude / GPT 模型通过自定义协议接入 WorkBuddy。
+- **Antigravity 桌面端**：以「系统级代理注入」方式启动 Antigravity（Google 官方桌面 AI 客户端），解决内网端口被代理误拦导致的 `ERR_TIMED_OUT`。
+- **环境清理**：用完一键移除全局代理环境变量，避免影响其他软件联网。
 
 ---
 
-## 🔧 功能详解
+## 二、前置条件
 
-### 1. Gemini 通用一键配置与登录启动（6 步流程）
+| 项目 | 要求 |
+|------|------|
+| 代理 / VPN | 已运行 **FlClash** 等代理软件，HTTP 端口必须为 **7890** |
+| 节点 | 需为 **美国 / 日本 / 新加坡 / 中国台湾**；大陆、香港节点会被 Google 地区拦截 |
+| 命令依赖 | 系统自带 `curl.exe`（Win10 1803+ 已内置） |
+| 桥接主程序 | `cli-proxy-api.exe`（放脚本同级目录，或 `%USERPROFILE%\.local\share\workbuddy-gpt-gemini-bridge\bin\`） |
+| 权限 | 普通用户权限即可；脚本只写 `HKCU\Environment`（当前用户），不碰系统级 |
 
-双击运行后自动执行：
-| **检测主程序** | 自动定位 `cli-proxy-api.exe`（用户目录或脚本同级），未找到时弹出目录引导用户放置 |
-1. **Google 连通性检测** — 通过 `127.0.0.1:7890` 代理探测 `https://www.google.com/generate_204`，失败则弹出原生 VBScript 对话框提示开启代理。
-2. **补全配置文件** — 自动生成 `~/.cli-proxy-api/config.yaml` 与隐形后台启动器 `start_bridge.vbs`。
-3. **账号登录状态检查** — 检测 `~/.cli-proxy-api/*.json` 凭证；缺失时自动唤起浏览器完成 Google / Antigravity 的 OAuth 授权。
-4. **同步 WorkBuddy 模型** — 向 `~/.workbuddy/models.json` 写入 **12 个模型定义**（Gemini / Claude / GPT-OSS），并做：
-   - 写入前自动备份 `models.json.bak`；
-   - 使用 **无 BOM 的 UTF-8** 编码（避免 WorkBuddy 解析失败）；
-   - 写入失败自动回滚备份。
-5. **智能管理桥接服务** — 先探测 `127.0.0.1:8317` 是否已有正常实例，**能复用就跳过重启**，否则重启 `cli-proxy-api` 并等待就绪（最长 30 秒）。
-6. **真实 API 发包测试** — 以干净 JSON 文件方式向桥接服务发送测试对话，校验节点地区是否被 Google 拦截（`User location is not supported`）以及账号凭证是否加载完成（含自动重试）。
-
-### 2. Antigravity 启动与配置代理（独立进程隔离）
-
-- 检测 Google 连通性（失败弹窗提示）。
-- 关闭已有的 Antigravity / `language_server` 旧实例。
-- 通过 `start_ag.vbs` 向所有进程注入系统级代理环境变量，确保antigravity程序正常运行。
-- 以 `wscript` 完全脱离控制台的方式拉起，因此 **关闭脚本窗口 / 工具箱后 Antigravity 不会被关闭**。
-- 避免了 Electron 加载本地回环端口 `https://127.0.0.1:5283/` 时出现的 `ERR_TIMED_OUT` 黑屏问题。
-
-### 3. 清理代理环境变量
-
-- 优先调用 `~/.cli-proxy-api/proxy_env.py clean` 删除注册表 `HKCU\Environment` 下的代理键值。
-- 若 Python 不可用，则直接 `reg delete` 兜底。
-- 通过 Win32 `SendMessageTimeout` 广播 `WM_SETTINGCHANGE`，通知系统刷新环境变量，恢复干净网络。
-
-> ⚠️ **重要**：使用 Antigravity 脚本登录完成后，必须点击「清理代理环境变量」
----
-
-## 📋 前置要求
-
-- **Windows 10/11**
-- 已安装 **WorkBuddy**（含 `~/.workbuddy` 目录与 `models.json`）
-- 已安装 `cli-proxy-api`（桥接主程序 `cli-proxy-api.exe`，默认路径 `~/.local/share/workbuddy-gpt-gemini-bridge/bin/`）
-- 代理 / VPN 软件运行中，**HTTP 代理端口为 `7890`**（如 FlClash）
-- 系统自带 `curl.exe`（Windows 10+ 默认自带）
+> 关键端口：代理 **7890** · 桥接 **8317** · Antigravity 内部 Electron 端口 **10229**
 
 ---
 
-## 🚀 使用方式
+## 三、目录结构
 
-### 方式一：直接使用 EXE（推荐）
-
-1. 确保 FlClash（或同类代理）已运行且端口为 `7890`。
-2. 双击 `GeminiAntigravitytools.exe`。
-3. 按需求点击对应按钮，按提示完成登录即可。
-
-### 方式二：直接运行批处理脚本
-
-进入 `cmdfiles/` 目录，双击对应 `.cmd` 文件：
-
-```text
-cmdfiles/
-├── Gemini通用一键配置与登录启动.cmd
-├── Antigravity启动与配置代理.cmd
-└── 清理系统全局代理.cmd
 ```
-
----
-
-## 🗂️ 项目结构
-
-```text
 GeminiManagerApp/
-├── main.py                        # tkinter GUI 源码，内嵌 3 个脚本
-├── Gemini与Antigravity配置工具箱.spec  # PyInstaller 打包配置
-├── GeminiAntigravitytools.exe     # 已打包的单文件程序（≈10 MB）
-├── cmdfiles/                      # 三个独立批处理脚本（可直接运行）
+├── main.py                              # GUI 主程序（内嵌三段脚本源码）
+├── GeminiAntigravitytools.exe           # PyInstaller 打包后的图形界面
+├── 重新打包.cmd                          # 本地一键重新编译 main.py → exe
+├── cmdfiles/                            # 独立可双击运行的脚本（与 GUI 内嵌版一致）
 │   ├── Gemini通用一键配置与登录启动.cmd
 │   ├── Antigravity启动与配置代理.cmd
 │   └── 清理系统全局代理.cmd
-├── build/  dist/  files/          # PyInstaller 构建产物
-└── README.md
+└── files/                               # 安装包附带版本（同上，内容一致）
+    ├── Gemini通用一键配置与登录启动.cmd
+    ├── Antigravity启动与配置代理.cmd
+    └── 清理代理环境变量.cmd
 ```
 
----
-
-## 🛠️ 自行构建（可选）
-
-需要 Python 3.13 + PyInstaller：
-
-```bash
-pip install pyinstaller
-pyinstaller --noconsole --onefile --clean main.py -n "GeminiAntigravitytools"
-```
-
-生成的单文件 EXE 位于 `dist/`。
-
-> 💡 提示：建议将编译好的 `GeminiAntigravitytools.exe` 通过 **GitHub Releases** 发布，而非直接提交进 Git 仓库（避免仓库体积膨胀）。
+> `cmdfiles/` 与 `files/` 的同名脚本内容一致，区别仅在打包时拷贝到不同位置。
 
 ---
 
-## ❓ 常见问题（FAQ）
+## 四、脚本说明
 
-**Q：提示「端口 8317 被其他程序占用」？**
-A：当前版本已改为智能探测——若发现 `127.0.0.1:8317` 已有正常响应实例会直接复用，不再误报占用。若仍初始化超时，通常是 VPN 节点延迟过高或 OAuth 凭证未刷新，请切换稳定节点或重新运行脚本。
+### 1. `Gemini通用一键配置与登录启动.cmd`
+Gemini 桥接服务【通用版】一键登录 / 配置与启动工具（6 步流程）：
 
-**Q：WorkBuddy 里看不到模型？**
-A：旧版脚本写入的 `models.json` 带 UTF-8 BOM 导致解析失败。当前版本已强制使用无 BOM 编码；若曾受影响，重启 WorkBuddy 即可重新读取。
+1. **检测主程序**：优先用脚本同级目录的 `cli-proxy-api.exe`，其次默认安装目录；找不到则自动打开目录引导你放入。
+2. **连通性检测**：通过 `127.0.0.1:7890` 探测 Google `generate_204`，不通则提示检查代理。
+3. **配置目录与文件**：三级目录回退写入（`%USERPROFILE%\.cli-proxy-api` → `%LOCALAPPDATA%\cli-proxy-api` → `%TEMP%\cli-proxy-api`），并生成 `config.yaml` + 隐形启动 `start_bridge.vbs`。
+4. **OAuth 登录**：无凭证时拉起浏览器完成 Google 授权，写入 `BRIDGE_DIR` 下的 `*json` 凭证。
+5. **同步 WorkBuddy 模型**：将 12 个 Gemini / Claude / GPT 模型定义写入 `~/.workbuddy/models.json`（写入前自动备份 `models.json.bak`）。
+6. **桥接服务管理 + 发包测试**：复用或重启后台桥接，最后真实发包验证节点地区是否合格。
 
-**Q：运行测试时报 `unknown provider for model`？**
-A：这是账号凭证还在异步加载中。脚本已内置自动重试（最多 3 次）；若持续失败，请确认 OAuth 登录已成功完成。
+### 2. `Antigravity启动与配置代理.cmd`
+Antigravity 启动与登录工具（**系统级代理注入版**，4 步流程）：
 
-**Q：Antigravity 提示 `ERR_TIMED_OUT` 加载 `127.0.0.1:5283/` 失败？**
-A：旧版把代理写进了系统注册表，导致 Electron 把本地回环流量也发往代理。当前版本改为进程级注入并豁免回环地址，已解决该问题。
+1. **检查主程序**：确认 `Antigravity.exe` 存在于 `%LOCALAPPDATA%\Programs\antigravity\`。
+2. **连通性检测**：同上，依赖 7890 代理可访问 Google。
+3. **关闭旧实例**：`taskkill` 掉 `Antigravity.exe` 与 `language_server.exe`，等待 2 秒。
+4. **系统级注入 + 启动**：
+   - 用 `[Environment]::SetEnvironmentVariable(..., 'User')` 写入
+     `HKCU\Environment` 的 `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY`，**并自动广播 `WM_SETTINGCHANGE`** 让新进程即时生效；
+   - `NO_PROXY` 含 `127.0.0.1,localhost,::1,<-loopback>,127.0.0.0/8,*.local`，其中 `<-loopback>` 是 Chromium 专用 token，确保 Electron 内部端口 `127.0.0.1:10229` 绕过代理，修复 `ERR_TIMED_OUT`；
+   - 通过精简 `start_ag.vbs` 脱离启动 Antigravity（VBS 写入失败自动降级到 `%TEMP%`）。
+
+### 3. `清理系统全局代理.cmd` / `清理代理环境变量.cmd`
+彻底移除 `HKCU\Environment` 中的 `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` 并广播刷新。
+**每次用完 Antigravity 或结束桥接后务必运行一次**，否则残留代理会导致 WorkBuddy 及其他软件无法联网。
+
+### 4. `重新打包.cmd`
+本地一键重新编译：`清理 build/dist` → `PyInstaller --clean --noconfirm` → 自动用通配符定位 `.spec` 与 `dist\*.exe` → 复制为 `GeminiAntigravitytools.exe`。
+纯英文界面，避免中文路径 / 编码污染。需本机已存在 WorkBuddy 管理的 Python 3.13.12。
 
 ---
 
-## ⚖️ 免责声明
+## 五、图形界面（GeminiAntigravitytools.exe）
 
-本项目仅用于个人本地环境自动化配置，不涉及任何破解、绕过付费或违反服务条款的行为。账号授权请使用你本人合法的 Google / Antigravity 账号。使用代理 / VPN 请遵守所在地区法律法规。
+`main.py` 封装了三个按钮，分别对应内嵌的 `SCRIPT_GEMINI` / `SCRIPT_AG` / `SCRIPT_CLEAN`：
+
+| 按钮 | 作用 | 对应脚本 |
+|------|------|----------|
+| **Gemini 一键配置** | 桥接配置 + 登录 + 模型同步 | `SCRIPT_GEMINI` |
+| **Antigravity 启动代理** | 系统级代理注入并启动 | `SCRIPT_AG` |
+| **清理代理环境变量** | 移除全局代理 | `SCRIPT_CLEAN` |
+
+> 修改 `main.py` 内嵌脚本后，必须重新运行 `重新打包.cmd` 才能进 exe 生效。
+
+---
+
+## 六、重要注意事项
+
+1. **⚠️ 系统级代理污染**：Antigravity 脚本会把代理写入注册表 `HKCU\Environment`（对所有新进程全局生效）。**关掉 VPN 前先跑「清理系统全局代理」**，否则全系统联网中断。
+
+2. **NO_PROXY 必须放行回环地址**：Antigravity 的 `ERR_TIMED_OUT` 几乎都是因为内部端口 `127.0.0.1:10229` 被代理误转发。脚本已内置 `<-loopback>` 白名单，不要手动删掉此项。
+
+3. **地区拦截**：若 API 返回 `User location is not supported`，把 VPN 节点切到 美 / 日 / 新 / 台 再重跑脚本。
+
+4. **杀软拦截 VBS**：若提示无法写入 / 运行 `*.vbs`，多为安全软件拦截。脚本已做 `BRIDGE_DIR → %TEMP%` 自动降级写入；仍失败可临时放行或手动将 `cli-proxy-api.exe` 加入信任。
+
+---
+
+## 七、常见故障排查
+
+| 现象 | 原因 | 解决 |
+|------|------|------|
+| `electron: Failed to load URL ... 10229 ... ERR_TIMED_OUT` | 内部端口被代理转发 | 确认 `NO_PROXY` 含 `<-loopback>`；重跑脚本 |
+| 脚本双击秒退 / "不是内部或外部命令" | 括号转义错误（旧版） | 使用本版（已改用 `.NET SetEnvironmentVariable` + 顶层 `>` 重定向，避开 `( )` 块） |
+| 找不到 `start_bridge.vbs` | 目标目录不可写 / 杀软拦截 | 脚本已三级目录回退 + 降级到 `%TEMP%` |
+| 无法连接 Google | 代理未开 / 端口非 7890 / 节点受限 | 检查 FlClash，端口设为 7890 |
+| 关 VPN 后其他软件断网 | 全局代理残留 | 运行「清理系统全局代理」 |
+
+---
+
+## 八、更新记录
+
+- **2026-07-29**：Antigravity 脚本重构为系统级代理注入（`.NET SetEnvironmentVariable` + `WM_SETTINGCHANGE` 广播），修复 `( )` 块括号转义导致的秒退，新增 `<-loopback>` 放行内部端口修复 `ERR_TIMED_OUT`；`main.py` 与 `files/`、`cmdfiles/` 三处同步并重打包 exe。
+- **2026-07-28**：Gemini 通用一键脚本增加三级目录回退写入与 `start_bridge.vbs` 隐形拉起校验。
