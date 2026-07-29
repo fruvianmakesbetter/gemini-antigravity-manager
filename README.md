@@ -1,6 +1,6 @@
 # Gemini / Antigravity 配置工具箱
 
-将订阅制（OpenAI / Google / Claude）模型桥接进 WorkBuddy 的一键配置与启动工具集。
+将订阅制Gemini模型桥接进 WorkBuddy 的一键配置与启动工具集。
 配套的图形界面 `GeminiAntigravitytools.exe` 是把下面这些脚本封装成按钮的 GUI 版本。
 
 ---
