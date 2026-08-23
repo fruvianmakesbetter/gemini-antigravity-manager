@@ -126,3 +126,131 @@ Antigravity 启动与登录工具（**系统级代理注入版**，4 步流程�
 - **2026-07-28**：Gemini 通用一键脚本增加三级目录回退写入与 `start_bridge.vbs` 隐形拉起校验。
 **2028-08-23**:更新：1.增加了对于除了flclash外的v2ray,clash verge,karing等代理软件的支持，避免了使用其他代理软件端口时出现的连接失败问题。
 2.修复了antigravity脚本可能会出现的启动vbs脚本错误的问题。
+
+
+## ENG :# Gemini / Antigravity Configuration Toolbox
+
+A one-click configuration and startup toolkit for bridging subscription-based Gemini models into WorkBuddy.
+The bundled graphical interface `GeminiAntigravitytools.exe` is a GUI version that packages the scripts below into interactive buttons.
+
+---
+
+## 1. What It Does
+
+- **Gemini Bridge Service**: Launches a local proxy bridge (`cli-proxy-api`) to integrate Gemini / Claude / GPT models into WorkBuddy via custom protocols.
+- **Antigravity Desktop Client**: Launches Antigravity (Google's official desktop AI client) using "system-level proxy injection" to resolve `ERR_TIMED_OUT` caused by proxy misrouting of internal loopback ports.
+- **Environment Cleanup**: One-click removal of global proxy environment variables after use to prevent interference with other software's network connections.
+
+---
+
+## 2. Prerequisites
+
+| Item | Requirement |
+|------|-------------|
+| Proxy / VPN | A proxy client such as **FlClash**, etc., is already running. The HTTP port adapts automatically according to the proxy client settings. |
+| Node / Region | Must be located in **United States / Japan / Singapore / Taiwan, China**; Mainland China and Hong Kong nodes are geo-blocked by Google. |
+| Command Dependencies | System built-in `curl.exe` (included natively in Win10 1803+). |
+| Bridge Binary | `cli-proxy-api.exe` (placed in the same directory as the script, or in `%USERPROFILE%\.local\share\workbuddy-gpt-gemini-bridge\bin\`). |
+| Permissions | Standard user permissions are sufficient; the script only writes to `HKCU\Environment` (current user) without modifying system-level registry. |
+
+> Key Ports: Proxy **7890** · Bridge **8317** · Antigravity Internal Electron Port **10229**
+
+---
+
+## 3. Directory Structure
+
+```
+GeminiManagerApp/
+├── main.py                              # Main GUI program (embeds source code of the 3 scripts)
+├── GeminiAntigravitytools.exe           # GUI packed with PyInstaller
+├── 重新打包.cmd                          # Local one-click re-compilation script: main.py → exe
+├── cmdfiles/                            # Standalone double-clickable scripts (identical to GUI embedded versions)
+│   ├── Gemini通用一键配置与登录启动.cmd
+│   ├── Antigravity启动与配置代理.cmd
+│   └── 清理系统全局代理.cmd
+└── files/                               # Version bundled with installer package (identical content to above)
+    ├── Gemini通用一键配置与登录启动.cmd
+    ├── Antigravity启动与配置代理.cmd
+    └── 清理代理环境变量.cmd
+```
+
+> The scripts with identical names in `cmdfiles/` and `files/` share the exact same content; the only difference is where they are copied during packaging.
+
+---
+
+## 4. Script Details
+
+### 1. `Gemini通用一键配置与登录启动.cmd` (Universal Gemini One-Click Config, Login & Launch)
+Gemini Bridge Service [Universal Edition] One-click Login / Configuration and Launch Tool (6-Step Workflow):
+
+1. **Binary Detection**: Prioritizes `cli-proxy-api.exe` in the script's directory, followed by the default installation directory. If not found, it automatically opens the target directory to guide you to place it there.
+2. **Connectivity Test**: Probes Google's `generate_204` via `127.0.0.1:7890`; prompts to check proxy settings if unreachable.
+3. **Configuration Directory & Files**: 3-level fallback directory write (`%USERPROFILE%\.cli-proxy-api` → `%LOCALAPPDATA%\cli-proxy-api` → `%TEMP%\cli-proxy-api`), generating `config.yaml` and a stealth launcher `start_bridge.vbs`.
+4. **OAuth Login**: Launches browser to complete Google authorization when credentials are missing, saving `*.json` credentials under `BRIDGE_DIR`.
+5. **Sync WorkBuddy Models**: Writes definitions for 12 Gemini / Claude / GPT models into `~/.workbuddy/models.json` (automatically backs up to `models.json.bak` beforehand).
+6. **Bridge Service Management & Packet Verification**: Reuses or restarts the background bridge service, and sends a real test request to verify whether the node region meets requirements.
+
+### 2. `Antigravity启动与配置代理.cmd` (Antigravity Launch & Proxy Configuration)
+Antigravity Launch and Login Tool (**System-Level Proxy Injection Edition**, 4-Step Workflow):
+
+1. **Binary Check**: Verifies that `Antigravity.exe` exists in `%LOCALAPPDATA%\Programs\antigravity\`.
+2. **Connectivity Test**: Same as above, checks Google accessibility via proxy port 7890.
+3. **Terminate Existing Instances**: Terminates `Antigravity.exe` and `language_server.exe` via `taskkill`, then waits for 2 seconds.
+4. **System-Level Injection & Launch**:
+   - Writes `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` to `HKCU\Environment` via `[Environment]::SetEnvironmentVariable(..., 'User')`, **and automatically broadcasts `WM_SETTINGCHANGE`** so new processes take effect immediately;
+   - `NO_PROXY` contains `127.0.0.1,localhost,::1,<-loopback>,127.0.0.0/8,*.local`, where `<-loopback>` is a Chromium-specific token ensuring Electron's internal port `127.0.0.1:10229` bypasses the proxy to fix `ERR_TIMED_OUT`;
+   - Spawns and detaches Antigravity via a lightweight `start_ag.vbs` (automatically falls back to `%TEMP%` if VBS creation fails).
+
+### 3. `清理系统全局代理.cmd` / `清理代理环境变量.cmd` (Clean System Global Proxy / Clean Proxy Env Vars)
+Completely removes `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` from `HKCU\Environment` and broadcasts the refresh signal.
+**Be sure to run this once whenever you finish using Antigravity or stop the bridge**, otherwise residual proxy settings will cause WorkBuddy and other applications to lose network connectivity.
+
+### 4. `重新打包.cmd` (Repackage Script)
+Local one-click recompilation: `Clean build/dist` → `PyInstaller --clean --noconfirm` → Automatically locates `.spec` and `dist\*.exe` using wildcards → Copies to `GeminiAntigravitytools.exe`.
+Features an English interface to avoid Chinese character path/encoding issues. Requires Python 3.13.12 managed by WorkBuddy on the local machine.
+
+---
+
+## 5. Graphical User Interface (GeminiAntigravitytools.exe)
+
+`main.py` encapsulates three buttons corresponding to the embedded `SCRIPT_GEMINI`, `SCRIPT_AG`, and `SCRIPT_CLEAN`:
+
+| Button | Function | Corresponding Script |
+|--------|----------|----------------------|
+| **Gemini One-Click Config** | Bridge Configuration + Login + Model Synchronization | `SCRIPT_GEMINI` |
+| **Launch Antigravity Proxy** | Injects System-Level Proxy & Launches Antigravity | `SCRIPT_AG` |
+| **Clean Proxy Env Vars** | Removes Global Proxy | `SCRIPT_CLEAN` |
+
+> After modifying embedded scripts in `main.py`, you must re-run `重新打包.cmd` for the changes to take effect in the `.exe`.
+
+---
+
+## 6. Important Notes
+
+1. **⚠️ System-Level Proxy Pollution**: The Antigravity script writes proxy configurations to the registry under `HKCU\Environment` (affecting all new processes globally). **Always run "Clean System Global Proxy" before closing your VPN**, otherwise system-wide network connectivity will be interrupted.
+2. **NO_PROXY Must Allow Loopback Addresses**: Antigravity `ERR_TIMED_OUT` errors are almost always caused by proxy misrouting of the internal port `127.0.0.1:10229`. The script comes with the `<-loopback>` whitelist token built-in; do not manually remove this entry.
+3. **Geo-blocking**: If the API returns `User location is not supported`, switch your VPN node to the US / Japan / Singapore / Taiwan and re-run the script.
+4. **Antivirus Blocking VBS**: Prompts indicating failure to write or execute `*.vbs` are usually due to security software blocking. The script has built-in automatic fallback from `BRIDGE_DIR` to `%TEMP%`. If issues persist, temporarily allow the script or add `cli-proxy-api.exe` to your antivirus trust list.
+
+---
+
+## 7. Troubleshooting & FAQ
+
+| Issue / Symptom | Possible Cause | Solution |
+|-----------------|----------------|----------|
+| `electron: Failed to load URL ... 10229 ... ERR_TIMED_OUT` | Internal loopback port is forwarded by proxy | Ensure `NO_PROXY` contains `<-loopback>`; re-run the script. |
+| Script closes immediately / "is not recognized as an internal or external command" | Parentheses escaping error (legacy version) | Use this current version (rewritten with `.NET SetEnvironmentVariable` + top-level `>` redirection, avoiding `( )` code blocks). |
+| Cannot find `start_bridge.vbs` | Target directory not writable / blocked by antivirus | The script already features 3-level directory fallback + fallback to `%TEMP%`. |
+| Cannot connect to Google | Proxy not started / Port is not 7890 / Geo-restricted node | Check FlClash/proxy client, set port to 7890, verify region. |
+| Other apps lose Internet after closing VPN | Residual global proxy settings | Run "Clean System Global Proxy". |
+
+---
+
+## 8. Changelog
+
+- **2028-08-23**: Update:
+  1. Added support for proxy clients other than FlClash, such as v2ray, Clash Verge, Karing, etc., avoiding connection failure issues when using different proxy client ports.
+  2. Fixed potential VBS startup script errors in the Antigravity script.
+- **2026-07-29**: Refactored the Antigravity script to use system-level proxy injection (`.NET SetEnvironmentVariable` + `WM_SETTINGCHANGE` broadcast), fixed instant crash caused by `( )` parentheses escaping, added `<-loopback>` to allow internal ports to fix `ERR_TIMED_OUT`; synchronized across `main.py`, `files/`, and `cmdfiles/` and repackaged the `.exe`.
+- **2026-07-28**: Added 3-level fallback directory writing and stealth launch verification for `start_bridge.vbs` in the Universal Gemini one-click script.
+
