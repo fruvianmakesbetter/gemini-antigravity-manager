@@ -17,7 +17,7 @@
 
 | 项目 | 要求 |
 |------|------|
-| 代理 / VPN | 已运行 **FlClash** 等代理软件，HTTP 端口必须为 **7890** |
+| 代理 / VPN | 已运行 **FlClash** 等代理软件，HTTP 端口根据代理软件设置而自动改变。|
 | 节点 | 需为 **美国 / 日本 / 新加坡 / 中国台湾**；大陆、香港节点会被 Google 地区拦截 |
 | 命令依赖 | 系统自带 `curl.exe`（Win10 1803+ 已内置） |
 | 桥接主程序 | `cli-proxy-api.exe`（放脚本同级目录，或 `%USERPROFILE%\.local\share\workbuddy-gpt-gemini-bridge\bin\`） |
@@ -124,3 +124,5 @@ Antigravity 启动与登录工具（**系统级代理注入版**，4 步流程�
 
 - **2026-07-29**：Antigravity 脚本重构为系统级代理注入（`.NET SetEnvironmentVariable` + `WM_SETTINGCHANGE` 广播），修复 `( )` 块括号转义导致的秒退，新增 `<-loopback>` 放行内部端口修复 `ERR_TIMED_OUT`；`main.py` 与 `files/`、`cmdfiles/` 三处同步并重打包 exe。
 - **2026-07-28**：Gemini 通用一键脚本增加三级目录回退写入与 `start_bridge.vbs` 隐形拉起校验。
+**2028-08-23**:更新：1.增加了对于除了flclash外的v2ray,clash verge,karing等代理软件的支持，避免了使用其他代理软件端口时出现的连接失败问题。
+2.修复了antigravity脚本可能会出现的启动vbs脚本错误的问题。
